@@ -24,13 +24,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--prompt",
-        required=True,
         help="Prompt to send to every model.",
     )
     parser.add_argument(
         "--models",
         nargs="+",
-        required=True,
         help="Model names to compare (space-separated).",
     )
     parser.add_argument(
@@ -48,6 +46,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=60.0,
         help="Request timeout in seconds (default: 60).",
+    )
+    parser.add_argument(
+        "--list-models",
+        action="store_true",
+        help="List models advertised by the endpoint and exit.",
     )
     return parser
 
@@ -105,6 +108,24 @@ def run(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     client = LLMClient(base_url=args.endpoint, timeout=args.timeout)
+
+    if args.list_models:
+        try:
+            models = client.list_models()
+        except LLMError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        if not models:
+            print("No models found at endpoint.", file=sys.stderr)
+            return 1
+        print("Models available at endpoint:")
+        for model in models:
+            print(f"  - {model}")
+        return 0
+
+    if not args.prompt or not args.models:
+        parser.error("--prompt and --models are required unless --list-models is used.")
+
     try:
         results = client.compare(args.models, args.prompt)
     except LLMError as exc:

@@ -1,44 +1,80 @@
 # compare-cli
 
-Local-first CLI for comparing local LLM models side by side. Send one prompt to
-multiple models through any OpenAI-compatible endpoint (default: Ollama),
-save the responses to disk, and score how different they are — no API keys
-required.
+A local-first command-line tool that lets you compare local LLM models side by
+side. Send the same prompt to several models through an OpenAI-compatible
+endpoint (Ollama by default), save every response to your computer, and see a
+clear score of how different the answers are.
+
+No API keys. No accounts. Nothing leaves your machine unless you choose to send
+it there.
 
 Built and maintained by [Asdale Dynamics, LLC](https://dylanasdale.github.io)
-(Dylan Asdale, Indiana). Plain English, step by step, never condescending —
-built for anyone getting started with local AI.
+(Dylan Asdale, Indiana) — plain English, step by step, never condescending.
 
 ## What it does
 
-- Sends the same prompt to several models at once
-- Saves every response locally as a timestamped text file
-- Writes a machine-readable summary JSON with per-model errors and pairwise
-  difference scores
-- Prints a readable comparison table to the terminal
-- Works offline against your own endpoint (Ollama runs entirely on your
-  machine)
+Imagine you've got a few local models running (say `llama3.2` and `mistral`)
+and you want to see which one answers a question better. `compare-cli` helps
+you do that:
+
+1. You type one prompt.
+2. The tool sends that same prompt to each model you name.
+3. Every model's answer is saved as a file on your computer.
+4. The tool prints a table showing each answer's length and a score showing how
+   much the answers differ from one another (0 = same words, 1 = totally
+   different words).
+5. A summary file is saved too, so you can look back later.
+
+It works against Ollama out of the box, but you can point it at any
+OpenAI-compatible endpoint (LLama.cpp, vLLM, and others).
+
+## Who this is for
+
+This tool is made for anyone getting started with local AI — no background in
+coding or machine learning required. It's published by Asdale Dynamics, LLC,
+which makes beginner-friendly AI education, books, guides, and practical tools.
 
 ## Install
+
+You need Python 3.9 or newer. No extra libraries are required — everything
+comes with Python.
 
 ```bash
 git clone <this-repo>
 cd ollama-model-comparer-cli
-pip install .
+pip install -e .
 ```
 
-This installs the `compare-cli` command. No runtime dependencies beyond
-Python 3.9+ (the standard library only).
+This installs the `compare-cli` command so you can run it from anywhere.
 
-## Usage
+> **Tip:** On some systems (including recent Ubuntu), `pip install` refuses to
+> modify the system Python. If you see an error about "externally managed
+> environment," try one of these instead:
+> - `pip install -e . --break-system-packages` (if you're comfortable with that)
+> - `python3 -m venv .venv && source .venv/bin/activate && pip install -e .`
+> - `pipx install .` (if you have pipx installed)
 
-Make sure your endpoint is running (Ollama by default on
-`http://localhost:11434/v1`) and that the models you want are pulled:
+## Get ready (Ollama)
+
+`compare-cli` talks to an endpoint that's already running. If you use Ollama,
+make sure it's running and pull the models you want to compare:
 
 ```bash
+ollama serve        # start Ollama (if it isn't already running)
 ollama pull llama3.2
 ollama pull mistral
 ```
+
+Not sure which models you have? Ask the endpoint:
+
+```bash
+compare-cli --list-models
+```
+
+That prints every model the endpoint knows about, so you can copy the names
+straight into your comparison.
+
+## Run a comparison
 
 Compare two models:
 
@@ -48,35 +84,44 @@ compare-cli --prompt "Explain AI like I'm ten" \
   --out-dir responses/
 ```
 
-Sample output:
+You'll see something like this:
 
 ```
 Model comparison results
 =========================
 
-Model        Chars  Words  Status
---------------------------------
-llama3.2       142     24  ok
-mistral        128     22  ok
+Model     Chars  Words  Status
+------------------------------
+llama3.2    142     24  ok
+mistral     128     22  ok
 
 Pairwise difference scores (0 = same words, 1 = no overlap):
-              llama3.2     mistral
-llama3.2      0.000        0.316
-mistral       0.316        0.000
+          llama3.2   mistral
+llama3.2     0.000    0.316
+mistral      0.316    0.000
 
 Saved 2 response(s) to responses/
 Summary written to responses/20261029-093000-summary.json
 ```
 
-Options:
+- **Chars / Words**: how long each answer is.
+- **Status**: `ok` means the model answered; `error` means it couldn't.
+- **Difference scores**: a lower number means the two models used more of the
+  same words; a higher number means their answers were more different.
 
-- `--prompt` — prompt to send to every model (required)
-- `--models` — model names, space-separated (required)
-- `--endpoint` — OpenAI-compatible base URL
-  (default: `http://localhost:11434/v1`, i.e. Ollama)
-- `--out-dir` — where responses and summaries are saved
-  (default: `responses/`)
-- `--timeout` — request timeout in seconds (default: 60)
+Each model's full answer is saved as its own timestamped text file, and a
+`summary.json` file records the prompt, the models, any errors, and the scores.
+
+## All the options
+
+| Option | What it does | Default |
+|--------|--------------|---------|
+| `--prompt` | The prompt to send to every model (required) | — |
+| `--models` | Model names to compare, separated by spaces (required) | — |
+| `--endpoint` | The OpenAI-compatible base URL to talk to | `http://localhost:11434/v1` (Ollama) |
+| `--out-dir` | Folder where responses and the summary are saved | `responses/` |
+| `--timeout` | How many seconds to wait for each answer | `60` |
+| `--list-models` | Print the models the endpoint knows about, then stop | — |
 
 You can also run without installing:
 
@@ -86,12 +131,12 @@ python -m model_comparer --prompt "..." --models model1 model2
 
 ## Local-first by design
 
-- Nothing is saved to the cloud. Responses live only in `--out-dir` on your
-  machine.
-- No API keys, no secrets, no registration. Ollama and other local endpoints
-  don't require keys.
-- Configure `--endpoint` to point at any OpenAI-compatible server (LLama.cpp,
-  vLLM, Ollama, etc.).
+- Nothing is uploaded to the cloud. Responses and summaries are saved only to
+  `--out-dir` on your own computer.
+- No API keys, no secrets, no registration. Local endpoints like Ollama don't
+  use keys.
+- Change `--endpoint` to point at any OpenAI-compatible server running on your
+  machine or network.
 
 ## Tests
 
@@ -99,8 +144,8 @@ python -m model_comparer --prompt "..." --models model1 model2
 pytest
 ```
 
-Tests use a mock endpoint on localhost, so no network or real models are
-needed.
+The tests spin up a fake endpoint on your computer, so no network connection or
+real models are needed.
 
 ## License
 

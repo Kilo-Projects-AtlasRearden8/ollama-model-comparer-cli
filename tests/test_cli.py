@@ -16,6 +16,9 @@ class FakeClient:
             {"model": "m2", "prompt": prompt, "response": "alpha delta", "error": None},
         ]
 
+    def list_models(self):
+        return ["m1", "m2"]
+
 
 def test_cli_runs_and_scores(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(cli, "LLMClient", FakeClient)
@@ -35,3 +38,12 @@ def test_cli_runs_and_scores(monkeypatch, tmp_path, capsys):
     data = json.loads(summary.read_text(encoding="utf-8"))
     assert data["prompt"] == "hello"
     assert data["models"] == ["m1", "m2"]
+
+
+def test_cli_list_models(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "LLMClient", FakeClient)
+    code = cli.run(["--list-models", "--endpoint", "http://x/v1"])
+    assert code == 0
+    captured = capsys.readouterr().out
+    assert "Models available at endpoint:" in captured
+    assert "m1" in captured and "m2" in captured
